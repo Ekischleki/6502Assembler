@@ -2,9 +2,7 @@
 
 
 using System.Diagnostics;
-using TASI.Exceptions;
 using TASI.InternalLangCoreHandle;
-using TASI.RuntimeObjects.FunctionClasses;
 using static TASI.Command;
 
 namespace TASI.InterpretStartup
@@ -13,54 +11,13 @@ namespace TASI.InterpretStartup
     {
 
 
-        public static void ShellMode()
-        {
-            Global global = new();
-            ShellStatementHandler statementHandler = new(global);
-
-            statementHandler.InitShell(global);
-            (IEnumerable<Command>? startCode, NamespaceInfo startNamespace) codeHeaderInformation = (statementHandler.GetShell(), new NamespaceInfo(NamespaceInfo.NamespaceIntend.generic, "ShellInput", true, global));
-            bool repeat = true;
-            while (repeat)
-            {
-                try
-                {
-                    /*
-                List<Command> start = new()
-                {
-                new Command(CommandTypes.Statement, "name", null),
-                new Command(CommandTypes.Statement, "ShellInput", null),
-                new Command(CommandTypes.EndCommand, "", null),
-                new Command(CommandTypes.Statement, "type", null),
-                new Command(CommandTypes.Statement, "generic", null),
-                new Command(CommandTypes.EndCommand, "", null),
-                new Command(CommandTypes.Statement, "start", null),
-                new Command(statementHandler.GetShell(), null),
-                new Command(CommandTypes.EndCommand, "", null)
-                };
-                    */
-                    statementHandler.currentNamespace = codeHeaderInformation.startNamespace;
-                    LoadFile.RunCode(codeHeaderInformation.startCode, true, global, codeHeaderInformation);
-                    repeat = false;
-                } catch (CodeSyntaxException e)
-                {
-                    Console.ForegroundColor = ConsoleColor.Red;
-                    Console.WriteLine(e.Message);
-                    Console.ForegroundColor = ConsoleColor.Yellow;
-                    Console.WriteLine("This was a code syntax exeption. All context information was lost (Context information only consists out of variables).");
-                    Console.ResetColor();
-                }
-            }
-
-        }
+       
 
 
         public const string interpreterVer = "1.0";
         public static Logger interpretInitLog = new();
         public static void Main(string[] args)
         {
-            ShellMode();
-            return;
             Global global = new Global();
             string? location = null;
             if (args.Length == 1)
@@ -70,7 +27,6 @@ namespace TASI.InterpretStartup
             else if (args.Length != 0)
             {
                 ArgCheck.InterpretArguments(ArgCheck.TokeniseArgs(args, ArgCheck.argCommandsDefinitions), global);
-                PluginManager.PluginManager.CheckPlugins(global.Plugins);
             }
 
             if (location == null)
@@ -90,7 +46,7 @@ namespace TASI.InterpretStartup
             //Remove comments 
             try
             {
-                PluginManager.PluginManager.InitFunctionPlugins(global.Plugins, global);
+              
 
                 if (location == null)
                     location = (Console.ReadLine() ?? throw new CodeSyntaxException("Code is null.")).Replace("\"", "");
@@ -100,40 +56,11 @@ namespace TASI.InterpretStartup
                 codeRuntime.Start();
 
 
-                var startValues = InterpretMain.InterpretHeaders(commands, global.MainFilePath, global);
-                Task.WhenAll(global.ProcessFiles).Wait();
+                
                 global.CurrentLine = -1;
-                var startCode = startValues.Item1;
-                if (startCode == null)
-                    if (startValues.Item2.namespaceIntend == NamespaceInfo.NamespaceIntend.library)
-                        throw new CodeSyntaxException("You can't start a library-type namespace directly.");
-                    else
-                        throw new CodeSyntaxException("You need to define a start. You can use the start statement to do so.");
 
-                foreach (NamespaceInfo namespaceInfo in global.Namespaces) //Activate functioncalls after scanning headers to not cause any errors. BTW im sorry
-                {
-                    foreach (Function function in namespaceInfo.namespaceFuncitons)
-                    {
-                        foreach (List<Command> functionCodeOverload in function.functionCode)
-                        {
-                            foreach (Command overloadCode in functionCodeOverload)
-                            {
-                                global.CurrentLine = overloadCode.commandLine;
-                                if (overloadCode.commandType == CommandTypes.FunctionCall) overloadCode.functionCall.SearchCallFunction(namespaceInfo, global);
-                                if (overloadCode.commandType == CommandTypes.CodeContainer) overloadCode.initCodeContainerFunctions(namespaceInfo, global);
-                                if (overloadCode.commandType == CommandTypes.Calculation) overloadCode.calculation.InitFunctions(namespaceInfo, global);
-                            }
-                        }
-                    }
-
-                }
-                foreach (Command command in startValues.Item1)
-                {
-                    global.CurrentLine = command.commandLine;
-                    if (command.commandType == CommandTypes.FunctionCall) command.functionCall.SearchCallFunction(startValues.Item2, global);
-                    if (command.commandType == CommandTypes.Calculation) command.calculation.InitFunctions(startValues.Item2, global);
-                    if (command.commandType == CommandTypes.CodeContainer) command.initCodeContainerFunctions(startValues.Item2, global);
-                }
+               
+                
                 int line = -1;
                 /*
                 while (true)
@@ -152,9 +79,8 @@ namespace TASI.InterpretStartup
                     Console.ReadKey();
                 }
                 */
-                AccessableObjects accessableObjects = new(new(), startValues.Item2, global);
-                PluginManager.PluginManager.InitBeforeRuntimePlugins(global.Plugins, accessableObjects);
-                InterpretMain.InterpretNormalMode(startCode, accessableObjects);
+
+                
                 codeRuntime.Stop();
                 Console.WriteLine($"Code finished; Runtime: {codeRuntime.ElapsedMilliseconds} ms");
                 Console.ReadKey(true);
@@ -168,26 +94,7 @@ namespace TASI.InterpretStartup
                 switch (ex)
                 {
 
-                    case FaultyPluginException faultyPluginException:
-                        Console.WriteLine("You tried to load a plugin which was faulty or could not be loaded for another reason.");
 
-                        Console.WriteLine($"Error: {faultyPluginException.Message}");
-                        if (faultyPluginException.faultyPlugin.CompatibilityVersion == PluginManager.PluginManager.PLUGIN_COMPATIBILITY_VERSION)
-                            Console.WriteLine("This plugin is on the current plugin version, so it should work. Please contact the Author if this is a problem on the plugin-side or the TASI developers if this is a plugin manager problem.");
-                        else if (faultyPluginException.faultyPlugin.CompatibilityVersion < PluginManager.PluginManager.PLUGIN_COMPATIBILITY_VERSION && faultyPluginException.faultyPlugin.CompatibilityVersion >= PluginManager.PluginManager.OLDEST_SUPPORTED_PLUGIN_COMPATIBILITY_VERSION)
-                            Console.WriteLine("This plugin isn't on the current plugin version but it is still supported, so it should work. Please contact the Author if this is a problem on the plugin-side or the TASI developers if this is a plugin manager problem.");
-                        else if (faultyPluginException.faultyPlugin.CompatibilityVersion < PluginManager.PluginManager.OLDEST_SUPPORTED_PLUGIN_COMPATIBILITY_VERSION)
-                            Console.WriteLine("This plugin version is no longer supported. Please check for an update from the developer or download an older version of the interpreter.");
-
-
-                        Console.WriteLine($"Plugin name: {faultyPluginException.faultyPlugin.Name}\nDescription: {faultyPluginException.faultyPlugin.Description}\nVersion: {faultyPluginException.faultyPlugin.Version}\nAuthor: {faultyPluginException.faultyPlugin.Author}\nPlugin Compatibility version: {faultyPluginException.faultyPlugin.CompatibilityVersion}\nPlugin manager Compatibility version: {PluginManager.PluginManager.PLUGIN_COMPATIBILITY_VERSION}");
-
-                        break;
-                    case InternalPluginException internalPluginException:
-                        Console.WriteLine("There was an internal plugin error.");
-                        Console.WriteLine($"Error: {internalPluginException.Message}");
-                        Console.WriteLine($"Plugin name: {internalPluginException.plugin.Name}\nDescription: {internalPluginException.plugin.Description}\nVersion: {internalPluginException.plugin.Version}\nAuthor: {internalPluginException.plugin.Author}\nPlugin Compatibility version: {internalPluginException.plugin.CompatibilityVersion}\nPlugin manager Compatibility version: {PluginManager.PluginManager.PLUGIN_COMPATIBILITY_VERSION}");
-                        break;
 
                     case CodeSyntaxException:
                         if (DateTime.Now.Month == 4 && DateTime.Now.Day == 1 && new Random().Next(0, 20) == 1) //April fools

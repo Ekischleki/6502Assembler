@@ -5,6 +5,7 @@ namespace TASI.Token
     public class Tokeniser
     {
         private static StringBuilder handleLineCharSB = new();
+        private static readonly char[] HexChars = "0123456789ABCDE".ToCharArray();
         public static int HandleLineChar(string input, out int endChar, int startChar, Global global)
         {
             endChar = startChar;
@@ -49,91 +50,45 @@ namespace TASI.Token
                     case ']':
                         throw new CodeSyntaxException($"Unexpected '{c}'");
 
+                    case '$':
+                        sb.Clear();
+                        //sb.Append("0x");
+                        startLine = line;
+                        endChar++;
+                        bool negativeNumber = false;
+                        if (input[endChar] == '-')
+                        {
+                            endChar++;
+                            negativeNumber = true;
+                        }
 
+                        while (HexChars.Contains(char.ToUpper(input[endChar])))
+                        {
+
+
+                            if (input[endChar] == 'Ⅼ')
+                            {
+                                line = HandleLineChar(input, out endChar, endChar, global);
+                                endChar++;
+                                continue;
+                            }
+                            sb.Append(input[endChar]);
+                            endChar++;
+
+                            if (endChar == input.Length)
+                                break;
+                        }
+                        if (sb.Length == 0)
+                            throw new CodeSyntaxException("Invalid hex num. (You forgot the number)");
+                        endChar--;
+                        result.Add(new((negativeNumber ? -1 : 1) * long.Parse(sb.ToString(), System.Globalization.NumberStyles.HexNumber), startLine, line));
+                        break;
                     case '\"':
                         result.Add(HandleString(input, endChar, out endChar, out line, global, line));
                         break;
                     case ';':
                         result.Add(new(Command.CommandTypes.EndCommand, ";", global, line, line));
                         break;
-
-                    case '(':
-                        //Would be nice to do that smoother some day
-
-                        sb.Clear();
-                        endChar++;
-                        startLine = line;
-                        for (int calcDeph = 1; calcDeph != 0; endChar++)
-                        {
-                            if (endChar >= input.Length) throw new CodeSyntaxException("Expected ']'");
-
-                            switch (input[endChar])
-                            {
-                                case ')':
-                                    calcDeph--;
-                                    if (calcDeph != 0)
-                                        sb.Append(')');
-                                    break;
-                                case '(':
-                                    calcDeph++;
-                                    sb.Append('(');
-                                    break;
-                                case '\"':
-                                    sb.Append($"\"{HandleString(input, endChar, out endChar, out currentLine, global, -1, false).commandText}\"");
-                                    break;
-                                case 'Ⅼ':
-                                    line = HandleLineChar(input, out endChar, endChar, global);
-                                    sb.Append($"Ⅼ{line}Ⅼ");
-                                    break;
-
-                                default:
-                                    sb.Append(input[endChar]);
-                                    break;
-                            }
-                        }
-                        endChar--;
-                        result.Add(new(Command.CommandTypes.Calculation, sb.ToString(), global, startLine, line));
-                        break;
-                    case '[':
-                        //Would be nice to do that smoother some day
-                        sb.Clear();
-                        endChar++;
-                        startLine = line;
-                        for (int methodDeph = 1; methodDeph != 0; endChar++)
-                        {
-                            if (endChar >= input.Length) throw new CodeSyntaxException("Expected ']'");
-                            switch (input[endChar])
-                            {
-                                case ']':
-                                    methodDeph--;
-                                    if (methodDeph != 0)
-                                        sb.Append(']');
-                                    break;
-                                case '[':
-                                    methodDeph++;
-                                    sb.Append('[');
-                                    break;
-                                case '\"':
-
-
-                                    sb.Append($"\"{HandleString(input, endChar, out endChar, out currentLine, global, -1, false).commandText}\"");
-
-
-                                    break;
-                                case 'Ⅼ':
-                                    line = HandleLineChar(input, out endChar, endChar, global);
-                                    sb.Append($"Ⅼ{line}Ⅼ");
-                                    break;
-
-                                default:
-                                    sb.Append(input[endChar]);
-                                    break;
-                            }
-                        }
-                        endChar--;
-                        result.Add(new(Command.CommandTypes.FunctionCall, sb.ToString(), global, startLine, line));
-                        break;
-
                     case '{':
                         int lineStart = line;
                         var inCodeContainer = TokeniseInputRecursive(input, out endChar, out line, global, line, endChar + 1);
@@ -254,7 +209,7 @@ namespace TASI.Token
         }
 
 
-        internal static readonly HashSet<char> specialCommandChars = new() { '\"', '[', ']', '(', ')', ';', '{', '}', ' ' }; //A sb or syntax will end if it contains any of these chars and the correct type will follow
+        internal static readonly HashSet<char> specialCommandChars = new() { '\"', '[', ']', '(', ')', ';', '{', '}', ' ', '$' }; //A sb or syntax will end if it contains any of these chars and the correct type will follow
 
         public static List<Command> CallTokeniseInput(string line, Global global, int currentLine = 0)
         {

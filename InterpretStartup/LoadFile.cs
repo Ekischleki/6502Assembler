@@ -1,7 +1,5 @@
 ﻿using System.Text;
 using TASI.InternalLangCoreHandle;
-using TASI.RuntimeObjects;
-using TASI.RuntimeObjects.FunctionClasses;
 using TASI.Token;
 using static TASI.Command;
 
@@ -37,76 +35,7 @@ namespace TASI.InterpretStartup
             return Tokeniser.CallTokeniseInput(sb.ToString(), global);
 
         }
-        public static Value? RunCode(string code)
-        {
-            Global global = new();
-            List<Command> tokenisedCode = Tokeniser.CallTokeniseInput(code, global);
-            var codeHeaderInformation = InterpretMain.InterpretHeaders(tokenisedCode, "", global);
-            AccessableObjects initialAccessableObjects = new(new(), codeHeaderInformation.Item2, global);
-
-            foreach (NamespaceInfo namespaceInfo in global.Namespaces) //Activate functioncalls after scanning headers to not cause any errors. BTW im sorry
-            {
-                foreach (Function function in namespaceInfo.namespaceFuncitons)
-                {
-                    foreach (IEnumerable<Command> functionCodeOverload in function.functionCode)
-                    {
-                        foreach (Command overloadCode in functionCodeOverload)
-                        {
-                            global.CurrentLine = overloadCode.commandLine;
-                            if (overloadCode.commandType == CommandTypes.FunctionCall) overloadCode.functionCall.SearchCallFunction(namespaceInfo, global);
-                            if (overloadCode.commandType == CommandTypes.CodeContainer) overloadCode.initCodeContainerFunctions(namespaceInfo, global);
-                            if (overloadCode.commandType == CommandTypes.Calculation) overloadCode.calculation.InitFunctions(namespaceInfo, global);
-                        }
-                    }
-                }
-
-            }
-            foreach (Command command in codeHeaderInformation.Item1)
-            {
-                global.CurrentLine = command.commandLine;
-                if (command.commandType == CommandTypes.FunctionCall) command.functionCall.SearchCallFunction(codeHeaderInformation.Item2, global);
-                if (command.commandType == CommandTypes.Calculation) command.calculation.InitFunctions(codeHeaderInformation.Item2, global);
-                if (command.commandType == CommandTypes.CodeContainer) command.initCodeContainerFunctions(codeHeaderInformation.Item2, global);
-            }
-
-            return InterpretMain.InterpretNormalMode(codeHeaderInformation.Item1, initialAccessableObjects);
-
-        }
-        public static Value? RunCode(IEnumerable<Command> code, bool externalCallFunctionSearch = false, Global global = null!, (IEnumerable<Command>? startCode, NamespaceInfo startNamespace)? codeHeaderInformation = null!)
-        {
-            global ??= new();
-            codeHeaderInformation ??= InterpretMain.InterpretHeaders(code, "", global);
-            AccessableObjects initialAccessableObjects = new(new(), codeHeaderInformation.Value.startNamespace, global);
-
-            foreach (NamespaceInfo namespaceInfo in global.Namespaces) //Activate functioncalls after scanning headers to not cause any errors. BTW im sorry
-            {
-                foreach (Function function in namespaceInfo.namespaceFuncitons)
-                {
-                    foreach (IEnumerable<Command> functionCodeOverload in function.functionCode)
-                    {
-                        foreach (Command overloadCode in functionCodeOverload)
-                        {
-                            global.CurrentLine = overloadCode.commandLine;
-                            if (overloadCode.commandType == CommandTypes.FunctionCall) overloadCode.functionCall.SearchCallFunction(namespaceInfo, global);
-                            if (overloadCode.commandType == CommandTypes.CodeContainer) overloadCode.initCodeContainerFunctions(namespaceInfo, global);
-                            if (overloadCode.commandType == CommandTypes.Calculation) overloadCode.calculation.InitFunctions(namespaceInfo, global);
-                        }
-                    }
-                }
-
-            }
-            if (!externalCallFunctionSearch)
-                foreach (Command command in codeHeaderInformation.Value.startCode)
-                {
-                    global.CurrentLine = command.commandLine;
-                    if (command.commandType == CommandTypes.FunctionCall) command.functionCall.SearchCallFunction(codeHeaderInformation.Value.startNamespace, global);
-                    if (command.commandType == CommandTypes.Calculation) command.calculation.InitFunctions(codeHeaderInformation.Value.startNamespace, global);
-                    if (command.commandType == CommandTypes.CodeContainer) command.initCodeContainerFunctions(codeHeaderInformation.Value.startNamespace, global);
-                }
-
-            return InterpretMain.InterpretNormalMode(codeHeaderInformation.Value.startCode, initialAccessableObjects);
-
-        }
+       
 
     }
 }

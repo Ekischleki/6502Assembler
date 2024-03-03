@@ -18,12 +18,7 @@ namespace TASI
             {
                 switch (token.argDefinition.argName)
                 {
-                    case "p":
-                        if (!File.Exists(token.argAttributes[0]))
-                            throw new ArgumentException($"The plugin file \" {token.argAttributes[0]} doesn't exist");
-
-                        global.Plugins.AddRange(PluginManager.PluginManager.GetPluginsFromAssembly(PluginManager.PluginManager.LoadPluginAssembly(token.argAttributes[0])));
-                        break;
+                    
                     case "r":
                         throw new NotImplementedException();
                     case "a":

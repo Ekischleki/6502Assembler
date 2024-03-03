@@ -41,29 +41,15 @@ namespace TASI.LangCoreHandleInterface
                         return false;
                     else
                         return true;
-                case StatementInput.Calculation:
-                    if (command.commandType != Command.CommandTypes.Calculation)
-                        return false;
-                    else
-                        return true;
-                case StatementInput.FunctionCall:
-                    if (command.commandType != Command.CommandTypes.FunctionCall)
-                        return false;
-                    else
-                        return true;
                 case StatementInput.Statement:
                     if (command.commandType != Command.CommandTypes.Statement)
                         return false;
                     else
                         return true;
                 case StatementInput.ValueReturner:
-                    if (command.commandType == Command.CommandTypes.FunctionCall)
-                        return true;
                     if (command.commandType == Command.CommandTypes.String)
                         return true;
                     if (command.commandType == Command.CommandTypes.Statement)
-                        return true;
-                    if (command.commandType == Command.CommandTypes.Calculation)
                         return true;
                     return false;
                 default:
